@@ -1,0 +1,13 @@
+# Caddy auto-provisions HTTPS (Let's Encrypt) for $SITE_DOMAIN.
+# Requests to /api/* go to the Go backend; everything else to the Nuxt server.
+{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy backend:8080
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}
