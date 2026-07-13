@@ -13,14 +13,45 @@ interface Analytics {
   thisWeekExp: number
 }
 
+interface HeatDay { date: string; count: number }
+
+const { t, locale } = useI18n()
 const data = ref<Analytics | null>(null)
+const heat = ref<HeatDay[]>([])
 const pending = ref(true)
 const metric = ref<'completions' | 'exp'>('completions')
 const active = ref<number | null>(null) // hovered/tapped bar index
 
 onMounted(async () => {
-  try { data.value = await useApi()<Analytics>('/analytics') } finally { pending.value = false }
+  try {
+    const [a, h] = await Promise.all([
+      useApi()<Analytics>('/analytics'),
+      useApi()<HeatDay[]>('/analytics/heatmap'),
+    ])
+    data.value = a
+    heat.value = h
+  } finally {
+    pending.value = false
+  }
 })
+
+// --- heatmap: pad the start to a Sunday so columns == weeks, rows == weekday ---
+const heatCells = computed<(HeatDay | null)[]>(() => {
+  if (!heat.value.length) return []
+  const first = new Date(heat.value[0].date + 'T00:00:00')
+  const pad = first.getDay() // 0=Sun..6
+  return [...Array(pad).fill(null), ...heat.value]
+})
+function heatColor(count: number): string {
+  if (count <= 0) return 'var(--track)'
+  const pct = count >= 4 ? 100 : 25 * count // 25/50/75/100
+  return `color-mix(in srgb, var(--grn-ink) ${pct}%, transparent)`
+}
+function heatTitle(c: HeatDay | null): string {
+  if (!c) return ''
+  const d = new Date(c.date + 'T00:00:00').toLocaleDateString(locale.value === 'en' ? 'en-US' : 'id-ID', { day: 'numeric', month: 'short' })
+  return `${d}: ${c.count}`
+}
 
 // --- bar chart geometry (viewBox 320x150) ---
 const W = 320, H = 150, padB = 22, padT = 14
@@ -42,7 +73,7 @@ const bars = computed(() => {
 const catMax = computed(() => Math.max(1, ...(data.value?.byCategory ?? []).map((c) => c.count)))
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+  return new Date(iso).toLocaleDateString(locale.value === 'en' ? 'en-US' : 'id-ID', { day: 'numeric', month: 'short' })
 }
 </script>
 
@@ -50,7 +81,7 @@ function fmtDate(iso: string) {
   <div class="fx col gap16">
     <div class="fx ac gap12">
       <button class="backbtn" @click="navigateTo('/profile')"><i class="ph-bold ph-caret-left" /></button>
-      <span class="h">Analisis Progres</span>
+      <span class="h">{{ t('analytics.title') }}</span>
     </div>
 
     <div v-if="pending" class="spinner" />
@@ -58,23 +89,23 @@ function fmtDate(iso: string) {
       <!-- stat tiles -->
       <div class="fx gap10">
         <div class="card pad f1" style="padding:14px">
-          <div class="tny">Total selesai</div>
+          <div class="tny">{{ t('analytics.totalDone') }}</div>
           <div style="font:700 22px 'Space Grotesk';color:var(--ink);margin-top:4px">{{ idNum(data.totalCompletions) }}</div>
         </div>
         <div class="card pad f1" style="padding:14px">
-          <div class="tny">Hari aktif</div>
+          <div class="tny">{{ t('analytics.activeDays') }}</div>
           <div style="font:700 22px 'Space Grotesk';color:var(--ink);margin-top:4px">{{ data.activeDays }}</div>
         </div>
       </div>
       <div class="fx gap10">
         <div class="card pad f1" style="padding:14px">
-          <div class="tny">Streak</div>
+          <div class="tny">{{ t('analytics.streak') }}</div>
           <div style="font:700 22px 'Space Grotesk';color:var(--amber-ink);margin-top:4px">
             <i class="ph-fill ph-fire" style="font-size:16px" /> {{ data.currentStreak }}
           </div>
         </div>
         <div class="card pad f1" style="padding:14px">
-          <div class="tny">EXP minggu ini</div>
+          <div class="tny">{{ t('analytics.weekExp') }}</div>
           <div style="font:700 22px 'Space Grotesk';color:var(--primary);margin-top:4px">{{ idNum(data.thisWeekExp) }}</div>
         </div>
       </div>
@@ -82,19 +113,19 @@ function fmtDate(iso: string) {
       <!-- 14-day activity bar chart -->
       <div class="card pad">
         <div class="fx ac jb" style="margin-bottom:12px">
-          <span class="sec">14 hari terakhir</span>
+          <span class="sec">{{ t('analytics.last14') }}</span>
           <div class="seg" style="padding:3px">
-            <button class="segi" :class="{ segon: metric === 'completions' }" style="padding:5px 10px;font-size:11px" @click="metric = 'completions'">Selesai</button>
-            <button class="segi" :class="{ segon: metric === 'exp' }" style="padding:5px 10px;font-size:11px" @click="metric = 'exp'">EXP</button>
+            <button class="segi" :class="{ segon: metric === 'completions' }" style="padding:5px 10px;font-size:11px" @click="metric = 'completions'">{{ t('analytics.done') }}</button>
+            <button class="segi" :class="{ segon: metric === 'exp' }" style="padding:5px 10px;font-size:11px" @click="metric = 'exp'">{{ t('analytics.exp') }}</button>
           </div>
         </div>
 
         <!-- tap-to-inspect value -->
         <div style="height:20px;text-align:center">
           <span v-if="active !== null && bars[active]" style="font:700 12px 'Space Grotesk';color:var(--primary)">
-            {{ fmtDate(bars[active].date) }} · {{ bars[active].v }} {{ metric === 'exp' ? 'EXP' : 'selesai' }}
+            {{ fmtDate(bars[active].date) }} · {{ bars[active].v }} {{ metric === 'exp' ? 'EXP' : t('analytics.doneUnit') }}
           </span>
-          <span v-else class="mut" style="font-size:11px">Ketuk batang untuk detail</span>
+          <span v-else class="mut" style="font-size:11px">{{ t('analytics.tapBar') }}</span>
         </div>
 
         <svg :viewBox="`0 0 ${W} ${H}`" width="100%" :height="H" role="img" aria-label="Aktivitas 14 hari terakhir">
@@ -116,10 +147,31 @@ function fmtDate(iso: string) {
         </svg>
       </div>
 
+      <!-- consistency heatmap -->
+      <div class="card pad">
+        <span class="sec" style="display:block;margin-bottom:12px">{{ t('analytics.heatmap') }}</span>
+        <div style="overflow-x:auto;padding-bottom:4px">
+          <div
+            style="display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,1fr);gap:3px;width:max-content"
+          >
+            <div
+              v-for="(c, i) in heatCells" :key="i"
+              :title="heatTitle(c)"
+              :style="{ width: '11px', height: '11px', borderRadius: '3px', background: c ? heatColor(c.count) : 'transparent' }"
+            />
+          </div>
+        </div>
+        <div class="fx ac gap8" style="justify-content:flex-end;margin-top:8px">
+          <span class="mut" style="font-size:9.5px">{{ t('analytics.less') }}</span>
+          <span v-for="n in [0,1,2,3,4]" :key="n" :style="{ width:'11px',height:'11px',borderRadius:'3px',background: heatColor(n) }" />
+          <span class="mut" style="font-size:9.5px">{{ t('analytics.more') }}</span>
+        </div>
+      </div>
+
       <!-- completions by category -->
       <div class="card pad">
-        <span class="sec" style="display:block;margin-bottom:14px">Berdasarkan kategori</span>
-        <div v-if="!data.byCategory.length" class="mut" style="font-size:12px">Belum ada data.</div>
+        <span class="sec" style="display:block;margin-bottom:14px">{{ t('analytics.byCategory') }}</span>
+        <div v-if="!data.byCategory.length" class="mut" style="font-size:12px">{{ t('analytics.noData') }}</div>
         <div v-else class="fx col gap12">
           <div v-for="c in data.byCategory" :key="c.category">
             <div class="fx ac jb" style="margin-bottom:5px">

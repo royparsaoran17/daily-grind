@@ -66,12 +66,24 @@ export function useQuests() {
     }
   }
 
-  async function create(payload: {
+  interface QuestPayload {
     name: string; categoryId: string; frequency: string; difficulty: string; reminder: string
     weekday?: number | null; dayOfMonth?: number | null
-  }) {
+  }
+
+  async function create(payload: QuestPayload) {
     await useApi()('/quests', { method: 'POST', body: payload })
     await load(true)
+  }
+
+  async function update(id: string, payload: QuestPayload) {
+    await useApi()(`/quests/${id}`, { method: 'PUT', body: payload })
+    await load(true)
+  }
+
+  async function remove(id: string) {
+    await useApi()(`/quests/${id}`, { method: 'DELETE' })
+    quests.value = quests.value.filter((q) => q.id !== id)
   }
 
   const doneCount = computed(() => quests.value.filter((q) => q.done).length)
@@ -79,5 +91,5 @@ export function useQuests() {
     quests.value.filter((q) => q.done).reduce((s, q) => s + q.expReward, 0),
   )
 
-  return { quests, load, toggle, create, doneCount, totalExpToday, ATTR_ICON }
+  return { quests, load, toggle, create, update, remove, doneCount, totalExpToday, ATTR_ICON }
 }

@@ -28,6 +28,8 @@ Implemented from the Claude Design source `DailyGrind App.dc.html`
 9. **Renungan Harian** — daily devotional; completing grants FAITH
 10. **Jurnal** — daily journaling with mood, editable history
 11. **Analisis** — progress charts: 14-day activity, by-category, headline stats
+12. **Onboarding** — welcome + pick starter quests (first launch only)
+13. **Pengaturan** — dark mode, change password, logout, delete account
 
 ## Quick start
 
@@ -91,11 +93,15 @@ Quests support scheduling: `weekly` quests carry a `weekday` (0=Sunday..6),
 | POST | `/auth/login` | Log in → `{token, user}` |
 | GET | `/me` | Current character |
 | PUT | `/me` | Update profile (name, title) |
+| DELETE | `/me` | Delete account (requires password) |
+| PUT | `/me/password` | Change password |
+| POST | `/me/onboard` | Mark onboarding complete |
 | GET | `/achievements` | Badges with live unlock state + progress |
 | GET | `/analytics` | Progress/history: 14-day series, by-category, totals |
 | GET | `/categories` | Habit categories + attribute mapping |
 | GET | `/quests` | List quests with today's completion state |
 | POST | `/quests` | Create a quest |
+| PUT | `/quests/{id}` | Edit a quest |
 | POST | `/quests/{id}/complete` | Complete today (awards EXP/coins/attribute; advances streaks) |
 | DELETE | `/quests/{id}/complete` | Undo today's completion |
 | DELETE | `/quests/{id}` | Archive a quest |
@@ -110,6 +116,9 @@ Quests support scheduling: `weekly` quests carry a `weekday` (0=Sunday..6),
 | POST | `/feed/{id}/comments` | Add a comment |
 | GET | `/bible?bookId=PSA&chapter=23` | Verses (also accepts `?book=Mazmur`; defaults to Mazmur 23) |
 | GET | `/bible/books` | Canonical books + which chapters have verses (for the picker) |
+| GET | `/bible/marks?book_id=&chapter=` | Highlights/bookmarks for a chapter |
+| POST | `/bible/marks` | Toggle a highlight/bookmark on a verse |
+| GET | `/bible/bookmarks` | All bookmarked verses with text |
 | GET | `/devotional/today` | Today's devotional (materialized from the pool) |
 | POST | `/devotional/{id}/complete` | Complete devotional (+FAITH) |
 | GET | `/journal` | List all journal entries (newest first) |

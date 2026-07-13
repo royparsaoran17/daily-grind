@@ -12,6 +12,10 @@ type Config struct {
 	DatabaseURL string
 	JWTSecret   string
 	CORSOrigin  string
+	// Cloudinary (for avatar uploads via signed direct upload)
+	CloudinaryCloudName string
+	CloudinaryAPIKey    string
+	CloudinaryAPISecret string
 }
 
 // Load reads configuration from a .env file (if present) and the environment.
@@ -24,6 +28,10 @@ func Load() Config {
 		DatabaseURL: getenv("DATABASE_URL", "postgres://dailygrind:dailygrind@localhost:5432/dailygrind?sslmode=disable"),
 		JWTSecret:   getenv("JWT_SECRET", "dev-secret-change-me-please-32chars"),
 		CORSOrigin:  getenv("CORS_ORIGIN", "http://localhost:3000"),
+
+		CloudinaryCloudName: getenv("CLOUDINARY_CLOUD_NAME", ""),
+		CloudinaryAPIKey:    getenv("CLOUDINARY_API_KEY", ""),
+		CloudinaryAPISecret: getenv("CLOUDINARY_API_SECRET", ""),
 	}
 }
 

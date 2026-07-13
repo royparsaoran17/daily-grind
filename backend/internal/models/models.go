@@ -23,6 +23,10 @@ type User struct {
 	Coins         int        `json:"coins"`
 	Streak        int        `json:"streak"`
 	StreakFreezes int        `json:"streak_freezes"`
+	Onboarded     bool       `json:"onboarded"`
+	Locale        string     `json:"locale"`
+	AvatarURL     string     `json:"avatar_url"`
+	Timezone      string     `json:"timezone"`
 	Attr          Attributes `json:"attributes"`
 	CreatedAt     time.Time  `json:"created_at"`
 }
@@ -60,32 +64,35 @@ type Quest struct {
 
 // Comment on a feed post.
 type Comment struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"user_id"`
-	Author    string    `json:"author"`
-	Body      string    `json:"body"`
-	CreatedAt time.Time `json:"created_at"`
+	ID           string    `json:"id"`
+	UserID       string    `json:"user_id"`
+	Author       string    `json:"author"`
+	AuthorAvatar string    `json:"author_avatar,omitempty"`
+	Body         string    `json:"body"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 // Post in the activity feed.
 type Post struct {
-	ID          string    `json:"id"`
-	UserID      string    `json:"user_id"`
-	Author      string    `json:"author"`
-	AuthorLevel int       `json:"author_level"`
-	Body        string    `json:"body"`
-	PhotoURL    string    `json:"photo_url,omitempty"`
-	Badge       string    `json:"badge,omitempty"`
-	Likes       int       `json:"likes"`
-	LikedByMe   bool      `json:"liked_by_me"`
-	Comments    []Comment `json:"comments"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID           string    `json:"id"`
+	UserID       string    `json:"user_id"`
+	Author       string    `json:"author"`
+	AuthorAvatar string    `json:"author_avatar,omitempty"`
+	AuthorLevel  int       `json:"author_level"`
+	Body         string    `json:"body"`
+	PhotoURL     string    `json:"photo_url,omitempty"`
+	Badge        string    `json:"badge,omitempty"`
+	Likes        int       `json:"likes"`
+	LikedByMe    bool      `json:"liked_by_me"`
+	Comments     []Comment `json:"comments"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 // Friend is a lightweight view of another user.
 type Friend struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
+	Avatar    string `json:"avatar,omitempty"`
 	Level     int    `json:"level"`
 	Streak    int    `json:"streak"`
 	WeeklyEXP int    `json:"weekly_exp"`
@@ -93,12 +100,23 @@ type Friend struct {
 }
 
 // UserSearchResult is a candidate to add as a friend.
+// Status is one of: "none" | "outgoing" | "incoming" | "friend".
 type UserSearchResult struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Level     int    `json:"level"`
-	Title     string `json:"title"`
-	IsFriend  bool   `json:"is_friend"`
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Avatar string `json:"avatar,omitempty"`
+	Level  int    `json:"level"`
+	Title  string `json:"title"`
+	Status string `json:"status"`
+}
+
+// FriendRequest is an incoming friend request (from another user).
+type FriendRequest struct {
+	ID     string `json:"id"` // requester's user id
+	Name   string `json:"name"`
+	Avatar string `json:"avatar,omitempty"`
+	Level  int    `json:"level"`
+	Title  string `json:"title"`
 }
 
 // Verse is a single Bible verse (book/chapter live on the response wrapper).
@@ -116,6 +134,23 @@ type BibleBook struct {
 	Ordinal   int     `json:"ordinal"`
 	Testament string  `json:"testament"`
 	Chapters  []int32 `json:"chapters"`
+}
+
+// BibleMark is a highlight or bookmark on a verse.
+type BibleMark struct {
+	BookID  string `json:"book_id"`
+	Chapter int    `json:"chapter"`
+	Verse   int    `json:"verse"`
+	Kind    string `json:"kind"` // "highlight" | "bookmark"
+}
+
+// Bookmark is a saved verse with its text, for the bookmarks list.
+type Bookmark struct {
+	BookID  string `json:"book_id"`
+	Book    string `json:"book"`
+	Chapter int    `json:"chapter"`
+	Verse   int    `json:"verse"`
+	Text    string `json:"text"`
 }
 
 // Devotional is a daily reflection.
@@ -152,6 +187,50 @@ type JournalEntry struct {
 	Mood      string    `json:"mood,omitempty"`
 	Prompt    string    `json:"prompt,omitempty"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// Reading is one chapter to read within a plan day.
+type Reading struct {
+	BookID  string `json:"book_id"`
+	Chapter int    `json:"chapter"`
+	Label   string `json:"label"`
+}
+
+// ReadingPlanDay is one day of a reading plan.
+type ReadingPlanDay struct {
+	Day       int       `json:"day"`
+	Label     string    `json:"label"`
+	Readings  []Reading `json:"readings"`
+	Completed bool      `json:"completed"`
+}
+
+// ReadingPlan is a Bible reading plan plus the user's progress.
+type ReadingPlan struct {
+	ID          string           `json:"id"`
+	Title       string           `json:"title"`
+	Description string           `json:"description"`
+	Icon        string           `json:"icon"`
+	TotalDays   int              `json:"total_days"`
+	Enrolled    bool             `json:"enrolled"`
+	Completed   int              `json:"completed"`
+	FaithReward int              `json:"faith_reward"`
+	Days        []ReadingPlanDay `json:"days,omitempty"`
+}
+
+// Prayer is a prayer-list entry.
+type Prayer struct {
+	ID         string     `json:"id"`
+	Title      string     `json:"title"`
+	Body       string     `json:"body"`
+	Answered   bool       `json:"answered"`
+	AnsweredAt *time.Time `json:"answered_at,omitempty"`
+	CreatedAt  time.Time  `json:"created_at"`
+}
+
+// HeatmapDay is one calendar day's completion count.
+type HeatmapDay struct {
+	Date  string `json:"date"`
+	Count int    `json:"count"`
 }
 
 // AnalyticsDay is one day's activity for the progress charts.

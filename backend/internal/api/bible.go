@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -88,8 +89,8 @@ func (s *Server) handleBibleBooks(w http.ResponseWriter, r *http.Request) {
 // same devotional each day and it is stable across requests. This is the
 // offline generator; a production upgrade could instead have a scheduled job
 // write an LLM-authored devotional for tomorrow into this same table.
-func (s *Server) materializeToday(r *http.Request) error {
-	_, err := s.pool.Exec(r.Context(), `
+func materializeToday(ctx context.Context, tx pgx.Tx) error {
+	_, err := tx.Exec(ctx, `
 		INSERT INTO devotionals(for_date,title,passage,verse_text,reflection,prayer,faith_reward)
 		SELECT current_date, title, passage, verse_text, reflection, prayer, faith_reward
 		FROM devotional_pool
@@ -104,21 +105,23 @@ func (s *Server) materializeToday(r *http.Request) error {
 
 func (s *Server) handleTodayDevotional(w http.ResponseWriter, r *http.Request) {
 	uid := userID(r)
-	if err := s.materializeToday(r); err != nil {
-		writeErr(w, http.StatusInternalServerError, "gagal menyiapkan renungan")
-		return
-	}
 	var d models.Devotional
 	var dateVal string
-	err := s.pool.QueryRow(r.Context(), `
-		SELECT d.id, to_char(d.for_date,'YYYY-MM-DD'), d.title, d.passage, d.verse_text,
-		       d.reflection, d.prayer, d.faith_reward,
-		       EXISTS (SELECT 1 FROM devotional_completions dc
-		               WHERE dc.devotional_id=d.id AND dc.user_id=$1) AS completed
-		FROM devotionals d
-		WHERE d.for_date=current_date
-		ORDER BY d.for_date DESC LIMIT 1`, uid).
-		Scan(&d.ID, &dateVal, &d.Title, &d.Passage, &d.VerseText, &d.Reflection, &d.Prayer, &d.FaithReward, &d.Completed)
+	// Run inside the user's timezone so "today" is their local calendar day.
+	err := s.txTZ(r.Context(), uid, func(tx pgx.Tx) error {
+		if err := materializeToday(r.Context(), tx); err != nil {
+			return err
+		}
+		return tx.QueryRow(r.Context(), `
+			SELECT d.id, to_char(d.for_date,'YYYY-MM-DD'), d.title, d.passage, d.verse_text,
+			       d.reflection, d.prayer, d.faith_reward,
+			       EXISTS (SELECT 1 FROM devotional_completions dc
+			               WHERE dc.devotional_id=d.id AND dc.user_id=$1) AS completed
+			FROM devotionals d
+			WHERE d.for_date=current_date
+			ORDER BY d.for_date DESC LIMIT 1`, uid).
+			Scan(&d.ID, &dateVal, &d.Title, &d.Passage, &d.VerseText, &d.Reflection, &d.Prayer, &d.FaithReward, &d.Completed)
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeErr(w, http.StatusNotFound, "belum ada renungan hari ini")
 		return
@@ -136,6 +139,9 @@ func (s *Server) handleCompleteDevotional(w http.ResponseWriter, r *http.Request
 	devID := r.PathValue("id")
 
 	err := pgx.BeginFunc(r.Context(), s.pool, func(tx pgx.Tx) error {
+		if err := setSessionTZ(r.Context(), tx, uid); err != nil {
+			return err
+		}
 		var reward int
 		if err := tx.QueryRow(r.Context(),
 			`SELECT faith_reward FROM devotionals WHERE id=$1`, devID).Scan(&reward); err != nil {

@@ -14,6 +14,10 @@ export interface User {
   coins: number
   streak: number
   streakFreezes: number
+  onboarded: boolean
+  locale: string
+  avatarUrl: string
+  timezone: string
   attributes: Attributes
   createdAt: string
 }
@@ -82,6 +86,37 @@ export const useAuthStore = defineStore('auth', {
     async updateProfile(payload: { name: string; title: string }) {
       const user = await useApi()<User>('/me', { method: 'PUT', body: payload })
       this.setUser(user)
+    },
+    async changePassword(currentPassword: string, newPassword: string) {
+      await useApi()('/me/password', { method: 'PUT', body: { currentPassword, newPassword } })
+    },
+    async deleteAccount(password: string) {
+      await useApi()('/me', { method: 'DELETE', body: { password } })
+      this.logout()
+    },
+    async completeOnboarding() {
+      const user = await useApi()<User>('/me/onboard', { method: 'POST' })
+      this.setUser(user)
+    },
+    /** Upload an avatar image directly to Cloudinary (signed), then save its URL. */
+    async uploadAvatar(file: File) {
+      const url = await useUpload().uploadImage(file, 'avatar')
+      const user = await useApi()<User>('/me/avatar', { method: 'PUT', body: { url } })
+      this.setUser(user)
+    },
+    async removeAvatar() {
+      const user = await useApi()<User>('/me/avatar', { method: 'DELETE' })
+      this.setUser(user)
+    },
+    /** Sync the browser's timezone to the account if it differs from what's saved. */
+    async syncTimezone() {
+      if (!import.meta.client || !this.user) return
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+      if (!tz || tz === this.user.timezone) return
+      try {
+        await useApi()('/me/timezone', { method: 'PUT', body: { timezone: tz } })
+        this.user.timezone = tz
+      } catch { /* invalid/unsupported tz — keep saved value */ }
     },
     logout() {
       this.token = ''

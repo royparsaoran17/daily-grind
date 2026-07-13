@@ -38,21 +38,49 @@ func (s *Server) Routes() http.Handler {
 	// Authenticated
 	mux.Handle("GET /api/me", s.authed(s.handleMe))
 	mux.Handle("PUT /api/me", s.authed(s.handleUpdateMe))
+	mux.Handle("DELETE /api/me", s.authed(s.handleDeleteAccount))
+	mux.Handle("PUT /api/me/password", s.authed(s.handleChangePassword))
+	mux.Handle("POST /api/me/onboard", s.authed(s.handleOnboard))
+	mux.Handle("PUT /api/me/locale", s.authed(s.handleSetLocale))
+	mux.Handle("PUT /api/me/timezone", s.authed(s.handleSetTimezone))
+	mux.Handle("GET /api/me/avatar/signature", s.authed(s.handleAvatarSignature))
+	mux.Handle("PUT /api/me/avatar", s.authed(s.handleSetAvatar))
+	mux.Handle("DELETE /api/me/avatar", s.authed(s.handleRemoveAvatar))
 	mux.Handle("GET /api/achievements", s.authed(s.handleAchievements))
 	mux.Handle("GET /api/categories", s.authed(s.handleCategories))
 
 	mux.Handle("GET /api/quests", s.authed(s.handleListQuests))
 	mux.Handle("POST /api/quests", s.authed(s.handleCreateQuest))
+	mux.Handle("PUT /api/quests/{id}", s.authed(s.handleUpdateQuest))
 	mux.Handle("POST /api/quests/{id}/complete", s.authed(s.handleCompleteQuest))
 	mux.Handle("DELETE /api/quests/{id}/complete", s.authed(s.handleUncompleteQuest))
 	mux.Handle("DELETE /api/quests/{id}", s.authed(s.handleDeleteQuest))
 
 	mux.Handle("GET /api/friends", s.authed(s.handleFriends))
+	mux.Handle("GET /api/friends/requests", s.authed(s.handleListRequests))
+	mux.Handle("POST /api/friends/requests/{id}/accept", s.authed(s.handleAcceptRequest))
+	mux.Handle("POST /api/friends/requests/{id}/reject", s.authed(s.handleRejectRequest))
 	mux.Handle("GET /api/users/search", s.authed(s.handleSearchUsers))
 	mux.Handle("POST /api/friends/{id}", s.authed(s.handleAddFriend))
 	mux.Handle("DELETE /api/friends/{id}", s.authed(s.handleRemoveFriend))
 
+	mux.Handle("GET /api/uploads/signature", s.authed(s.handleUploadSignature))
+
 	mux.Handle("GET /api/analytics", s.authed(s.handleAnalytics))
+	mux.Handle("GET /api/analytics/heatmap", s.authed(s.handleHeatmap))
+
+	mux.Handle("GET /api/reading-plans", s.authed(s.handleListPlans))
+	mux.Handle("GET /api/reading-plans/{id}", s.authed(s.handlePlanDetail))
+	mux.Handle("POST /api/reading-plans/{id}/enroll", s.authed(s.handleEnrollPlan))
+	mux.Handle("DELETE /api/reading-plans/{id}/enroll", s.authed(s.handleLeavePlan))
+	mux.Handle("POST /api/reading-plans/{id}/days/{day}/complete", s.authed(s.handleCompletePlanDay))
+	mux.Handle("DELETE /api/reading-plans/{id}/days/{day}/complete", s.authed(s.handleUncompletePlanDay))
+
+	mux.Handle("GET /api/prayers", s.authed(s.handleListPrayers))
+	mux.Handle("POST /api/prayers", s.authed(s.handleCreatePrayer))
+	mux.Handle("PUT /api/prayers/{id}", s.authed(s.handleUpdatePrayer))
+	mux.Handle("POST /api/prayers/{id}/answer", s.authed(s.handleToggleAnswered))
+	mux.Handle("DELETE /api/prayers/{id}", s.authed(s.handleDeletePrayer))
 
 	mux.Handle("GET /api/feed", s.authed(s.handleFeed))
 	mux.Handle("POST /api/feed", s.authed(s.handleCreatePost))
@@ -63,6 +91,9 @@ func (s *Server) Routes() http.Handler {
 
 	mux.Handle("GET /api/bible", s.authed(s.handleBible))
 	mux.Handle("GET /api/bible/books", s.authed(s.handleBibleBooks))
+	mux.Handle("GET /api/bible/marks", s.authed(s.handleListMarks))
+	mux.Handle("POST /api/bible/marks", s.authed(s.handleToggleMark))
+	mux.Handle("GET /api/bible/bookmarks", s.authed(s.handleListBookmarks))
 
 	mux.Handle("GET /api/devotional/today", s.authed(s.handleTodayDevotional))
 	mux.Handle("POST /api/devotional/{id}/complete", s.authed(s.handleCompleteDevotional))

@@ -6,15 +6,26 @@ interface Quest {
   expReward: number; streak: number; done: boolean
   schedule?: string; dueToday?: boolean; frequency?: string
 }
-const props = defineProps<{ quest: Quest; showStreak?: boolean; showSchedule?: boolean }>()
-const emit = defineEmits<{ (e: 'toggle', quest: Quest): void }>()
+const props = defineProps<{ quest: Quest; showStreak?: boolean; showSchedule?: boolean; editable?: boolean }>()
+const emit = defineEmits<{ (e: 'toggle', quest: Quest): void; (e: 'edit', quest: Quest): void }>()
 
+const { t } = useI18n()
 const tint = computed(() => ATTR_COLOR[props.quest.attribute] ?? 'var(--primary)')
+
+// Play the celebration animation only when the tap *completes* the quest.
+const celebrate = ref(false)
+function onToggle() {
+  if (!props.quest.done) {
+    celebrate.value = true
+    setTimeout(() => (celebrate.value = false), 550)
+  }
+  emit('toggle', props.quest)
+}
 </script>
 
 <template>
-  <button class="quest" type="button" style="text-align:left" @click="emit('toggle', quest)">
-    <span class="chk" :class="{ chkon: quest.done }">
+  <div class="quest" role="button" tabindex="0" style="cursor:pointer" @click="onToggle">
+    <span class="chk" :class="{ chkon: quest.done, celebrate }">
       <i v-if="quest.done" class="ph-bold ph-check" />
     </span>
     <span class="qi" :style="{ background: `color-mix(in srgb, ${tint} 15%, transparent)`, color: tint }">
@@ -28,7 +39,7 @@ const tint = computed(() => ATTR_COLOR[props.quest.attribute] ?? 'var(--primary)
           · {{ quest.schedule }}
         </span>
         <span v-if="showSchedule && quest.dueToday && quest.frequency !== 'daily'" class="chipg pill" style="padding:1px 6px;font-size:9px">
-          Hari ini
+          {{ t('common.today') }}
         </span>
         <span v-if="showStreak && quest.streak > 0" class="chipa pill" style="padding:1px 6px;font-size:9px">
           <i class="ph-fill ph-fire" />{{ quest.streak }}
@@ -36,5 +47,11 @@ const tint = computed(() => ATTR_COLOR[props.quest.attribute] ?? 'var(--primary)
       </span>
     </span>
     <span class="chipa pill">+{{ quest.expReward }}</span>
-  </button>
+    <button
+      v-if="editable" class="pact" style="padding:0 0 0 4px" aria-label="Edit quest"
+      @click.stop="emit('edit', quest)"
+    >
+      <i class="ph ph-dots-three-vertical" style="font-size:18px" />
+    </button>
+  </div>
 </template>

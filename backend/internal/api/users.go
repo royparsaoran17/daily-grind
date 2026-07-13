@@ -22,18 +22,19 @@ type querier interface {
 // loadUser fetches a full user/character record.
 func (s *Server) loadUser(ctx context.Context, q querier, id string) (*models.User, error) {
 	var u models.User
+	// today = the user's LOCAL date (respects their timezone), so streaks break
+	// on the right calendar day regardless of server timezone.
 	err := q.QueryRow(ctx, `
 		SELECT id,name,email,title,level,exp,coins,
-		       -- effective streak: broken once missed days exceed banked freezes
 		       CASE
 		           WHEN last_active_on IS NULL THEN 0
-		           WHEN (current_date - last_active_on) <= 1 THEN streak
-		           WHEN streak_freezes >= (current_date - last_active_on - 1) THEN streak
+		           WHEN ((now() AT TIME ZONE timezone)::date - last_active_on) <= 1 THEN streak
+		           WHEN streak_freezes >= ((now() AT TIME ZONE timezone)::date - last_active_on - 1) THEN streak
 		           ELSE 0 END AS streak,
-		       streak_freezes,
+		       streak_freezes, (onboarded_at IS NOT NULL) AS onboarded, locale, COALESCE(avatar_url,''), timezone,
 		       str,vit,int_,wis,faith,created_at
 		FROM users WHERE id=$1`, id).Scan(
-		&u.ID, &u.Name, &u.Email, &u.Title, &u.Level, &u.EXP, &u.Coins, &u.Streak, &u.StreakFreezes,
+		&u.ID, &u.Name, &u.Email, &u.Title, &u.Level, &u.EXP, &u.Coins, &u.Streak, &u.StreakFreezes, &u.Onboarded, &u.Locale, &u.AvatarURL, &u.Timezone,
 		&u.Attr.STR, &u.Attr.VIT, &u.Attr.INT, &u.Attr.WIS, &u.Attr.FAITH, &u.CreatedAt)
 	if err != nil {
 		return nil, err

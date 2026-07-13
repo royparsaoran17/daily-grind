@@ -58,8 +58,8 @@ func seedDemo(ctx context.Context, pool *pgxpool.Pool) error {
 		}
 		for _, u := range users {
 			if _, err := tx.Exec(ctx,
-				`INSERT INTO users(id,name,email,password_hash,title,level,exp,coins,streak,str,vit,int_,wis,faith,last_active_on)
-				 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,current_date)`,
+				`INSERT INTO users(id,name,email,password_hash,title,level,exp,coins,streak,str,vit,int_,wis,faith,last_active_on,onboarded_at)
+				 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,current_date,now())`,
 				u.id, u.name, u.email, pw, u.title, u.level, u.exp, u.coins, u.streak,
 				u.str, u.vit, u.intv, u.wis, u.faith); err != nil {
 				return err

@@ -6,14 +6,15 @@ interface Entry {
 
 const route = useRoute()
 const { show } = useToast()
+const { t, locale } = useI18n()
 
-const MOODS = [
-  { key: 'bersyukur', label: 'Bersyukur', icon: 'ph-fill ph-hands-praying' },
-  { key: 'senang', label: 'Senang', icon: 'ph-fill ph-smiley' },
-  { key: 'biasa', label: 'Biasa', icon: 'ph-fill ph-smiley-meh' },
-  { key: 'lelah', label: 'Lelah', icon: 'ph-fill ph-battery-low' },
-  { key: 'sedih', label: 'Sedih', icon: 'ph-fill ph-cloud-rain' },
-]
+const MOODS = computed(() => [
+  { key: 'bersyukur', label: t('journal.moods.bersyukur'), icon: 'ph-fill ph-hands-praying' },
+  { key: 'senang', label: t('journal.moods.senang'), icon: 'ph-fill ph-smiley' },
+  { key: 'biasa', label: t('journal.moods.biasa'), icon: 'ph-fill ph-smiley-meh' },
+  { key: 'lelah', label: t('journal.moods.lelah'), icon: 'ph-fill ph-battery-low' },
+  { key: 'sedih', label: t('journal.moods.sedih'), icon: 'ph-fill ph-cloud-rain' },
+])
 
 const entries = ref<Entry[]>([])
 const pending = ref(true)
@@ -27,12 +28,12 @@ const mood = ref('')
 const prompt = ref('')
 
 const todayLabel = computed(() =>
-  new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' }),
+  new Date().toLocaleDateString(locale.value==='en'?'en-US':'id-ID', { weekday: 'long', day: 'numeric', month: 'long' }),
 )
 const editingLabel = computed(() =>
   selectedDate.value === 'today'
     ? todayLabel.value
-    : new Date(selectedDate.value).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+    : new Date(selectedDate.value).toLocaleDateString(locale.value==='en'?'en-US':'id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
 )
 const canSave = computed(() => (title.value.trim() || body.value.trim()) && !saving.value)
 
@@ -63,10 +64,10 @@ async function save() {
       method: 'PUT',
       body: { title: title.value, body: body.value, mood: mood.value, prompt: prompt.value },
     })
-    show('Jurnal tersimpan ✍️', 'ph-fill ph-notebook')
+    show(t('journal.saved'), 'ph-fill ph-notebook')
     await refresh()
   } catch (e: any) {
-    show(e?.data?.error ?? 'Gagal menyimpan.', 'ph-fill ph-warning')
+    show(e?.data?.error ?? t('journal.saveFail'), 'ph-fill ph-warning')
   } finally {
     saving.value = false
   }
@@ -93,11 +94,11 @@ async function remove(e: Entry) {
   await useApi()(`/journal/${e.date}`, { method: 'DELETE' })
   if (e.date === selectedDate.value) newToday()
   await refresh()
-  show('Jurnal dihapus', 'ph-fill ph-trash')
+  show(t('journal.removed'), 'ph-fill ph-trash')
 }
 
 function moodIcon(key?: string) {
-  return MOODS.find((m) => m.key === key)?.icon ?? 'ph-fill ph-note'
+  return MOODS.value.find((m) => m.key === key)?.icon ?? 'ph-fill ph-note'
 }
 function preview(text: string) {
   return text.length > 90 ? text.slice(0, 90) + '…' : text
@@ -108,7 +109,7 @@ function preview(text: string) {
   <div class="fx col gap16">
     <div class="fx ac gap12">
       <button class="backbtn" @click="navigateTo('/bible')"><i class="ph-bold ph-caret-left" /></button>
-      <span class="h">Jurnal Harian</span>
+      <span class="h">{{ t('journal.title') }}</span>
     </div>
 
     <!-- editor -->
@@ -116,24 +117,24 @@ function preview(text: string) {
       <div class="fx ac jb">
         <span class="sec"><i class="ph-fill ph-calendar-check" style="color:var(--primary)" /> {{ editingLabel }}</span>
         <button v-if="selectedDate !== 'today'" class="chip" @click="newToday">
-          <i class="ph ph-plus" />Hari ini
+          <i class="ph ph-plus" />{{ t('journal.newToday') }}
         </button>
       </div>
 
       <input v-model="title" class="field" style="font:700 15px 'Space Grotesk';color:var(--ink)"
-             placeholder="Judul (mis. Bersyukur hari ini)">
+             :placeholder="t('journal.titlePh')">
 
       <textarea v-model="body" class="compin" rows="6"
                 style="border:1.5px solid var(--fline);border-radius:14px;padding:13px 15px"
-                placeholder="Tulis refleksi, doa, atau apa pun yang kamu syukuri hari ini…" />
+                :placeholder="t('journal.bodyPh')" />
 
       <div v-if="prompt" class="mapbox">
         <i class="ph-fill ph-book-open" style="color:var(--primary);font-size:16px" />
-        <span style="font:600 12px 'Plus Jakarta Sans';color:var(--pink)">Terinspirasi dari {{ prompt }}</span>
+        <span style="font:600 12px 'Plus Jakarta Sans';color:var(--pink)">{{ t('journal.inspiredBy', { ref: prompt }) }}</span>
       </div>
 
       <div>
-        <span class="flabel">Perasaan</span>
+        <span class="flabel">{{ t('journal.feeling') }}</span>
         <div class="fx wrap gap8">
           <button
             v-for="m in MOODS" :key="m.key" class="chip"
@@ -146,29 +147,29 @@ function preview(text: string) {
       </div>
 
       <button class="btn" :disabled="!canSave" @click="save">
-        <i class="ph-bold ph-floppy-disk" />{{ saving ? 'Menyimpan…' : 'Simpan Jurnal' }}
+        <i class="ph-bold ph-floppy-disk" />{{ saving ? t('common.saving') : t('journal.saveEntry') }}
       </button>
     </div>
 
     <!-- history -->
     <div class="fx ac jb">
-      <span class="sec">Riwayat</span>
-      <span class="tny">{{ entries.length }} catatan</span>
+      <span class="sec">{{ t('journal.history') }}</span>
+      <span class="tny">{{ t('journal.entries', { n: entries.length }) }}</span>
     </div>
 
     <div v-if="pending" class="spinner" />
     <div v-else-if="!entries.length" class="mut" style="text-align:center;font-size:12.5px;padding:20px">
-      Belum ada catatan. Mulai tulis jurnal pertamamu di atas.
+      {{ t('journal.empty') }}
     </div>
     <div v-else class="fx col gap10">
       <div v-for="e in entries" :key="e.id" class="quest" style="align-items:flex-start">
         <span class="qi" style="background:var(--psoft);color:var(--primary)"><i :class="moodIcon(e.mood)" /></span>
         <button class="f1" style="text-align:left;background:none;border:none;padding:0" @click="edit(e)">
           <span style="display:block;font:700 13.5px 'Plus Jakarta Sans';color:var(--ink)">
-            {{ e.title || '(tanpa judul)' }}
+            {{ e.title || t('journal.noTitle') }}
           </span>
           <span class="mut" style="display:block;font-size:10.5px;margin:2px 0 4px">
-            {{ new Date(e.date).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) }}
+            {{ new Date(e.date).toLocaleDateString(locale.value==='en'?'en-US':'id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) }}
           </span>
           <span class="mut" style="font-size:11.5px;line-height:1.5">{{ preview(e.body) }}</span>
         </button>

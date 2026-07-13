@@ -22,6 +22,10 @@ CREATE TABLE IF NOT EXISTS users (
     -- Daily-activity streak bookkeeping
     streak_freezes INT NOT NULL DEFAULT 2,   -- coin-purchasable "grace days"
     last_active_on DATE,                     -- last day that counted toward the streak
+    onboarded_at   TIMESTAMPTZ,              -- null until the user finishes onboarding
+    locale         TEXT NOT NULL DEFAULT 'id' CHECK (locale IN ('id','en')),
+    avatar_url     TEXT,
+    timezone       TEXT NOT NULL DEFAULT 'Asia/Jakarta',  -- IANA tz for date math
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -73,6 +77,15 @@ CREATE TABLE IF NOT EXISTS friendships (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (user_id, friend_id)
 );
+
+-- Pending friend requests (accepted ones become rows in friendships) ---------
+CREATE TABLE IF NOT EXISTS friend_requests (
+    from_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    to_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (from_id, to_id)
+);
+CREATE INDEX IF NOT EXISTS idx_freq_to ON friend_requests(to_id);
 
 -- Social feed ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS posts (
@@ -153,6 +166,45 @@ CREATE TABLE IF NOT EXISTS devotional_pool (
     faith_reward INT NOT NULL DEFAULT 20
 );
 
+-- Bible highlights & bookmarks ----------------------------------------------
+CREATE TABLE IF NOT EXISTS bible_marks (
+    user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    book_id    TEXT NOT NULL,
+    chapter    INT  NOT NULL,
+    verse      INT  NOT NULL,
+    kind       TEXT NOT NULL CHECK (kind IN ('highlight','bookmark')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, book_id, chapter, verse, kind)
+);
+CREATE INDEX IF NOT EXISTS idx_marks_user ON bible_marks(user_id, kind);
+
+-- Bible reading plans (plan CONTENT is defined in code; DB tracks progress) ---
+CREATE TABLE IF NOT EXISTS reading_plan_enrollments (
+    user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    plan_id    TEXT NOT NULL,
+    started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, plan_id)
+);
+CREATE TABLE IF NOT EXISTS reading_plan_progress (
+    user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    plan_id      TEXT NOT NULL,
+    day_no       INT  NOT NULL,
+    completed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, plan_id, day_no)
+);
+
+-- Prayer list ----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS prayers (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title       TEXT NOT NULL,
+    body        TEXT NOT NULL DEFAULT '',
+    answered    BOOLEAN NOT NULL DEFAULT false,
+    answered_at TIMESTAMPTZ,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_prayers_user ON prayers(user_id, answered, created_at DESC);
+
 -- Journaling: one editable entry per user per calendar day ------------------
 CREATE TABLE IF NOT EXISTS journal_entries (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -174,3 +226,7 @@ ALTER TABLE users  ADD COLUMN IF NOT EXISTS last_active_on DATE;
 ALTER TABLE quests ADD COLUMN IF NOT EXISTS last_completed_on DATE;
 ALTER TABLE quests ADD COLUMN IF NOT EXISTS weekday INT;
 ALTER TABLE quests ADD COLUMN IF NOT EXISTS day_of_month INT;
+ALTER TABLE users  ADD COLUMN IF NOT EXISTS onboarded_at TIMESTAMPTZ;
+ALTER TABLE users  ADD COLUMN IF NOT EXISTS locale TEXT NOT NULL DEFAULT 'id';
+ALTER TABLE users  ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE users  ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'Asia/Jakarta';

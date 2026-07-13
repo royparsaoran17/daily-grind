@@ -1,5 +1,6 @@
 <script setup lang="ts">
-const { quests, load, toggle, doneCount, totalExpToday } = useQuests()
+const { t, locale } = useI18n()
+const { quests, load, toggle, totalExpToday } = useQuests()
 const freq = ref<'daily' | 'weekly' | 'monthly'>('daily')
 const pending = ref(true)
 
@@ -8,9 +9,13 @@ const pct = computed(() =>
   filtered.value.length ? Math.round((filtered.value.filter((q) => q.done).length / filtered.value.length) * 100) : 0,
 )
 const doneInTab = computed(() => filtered.value.filter((q) => q.done).length)
-const periodLabel = computed(() => (freq.value === 'daily' ? 'hari ini' : freq.value === 'weekly' ? 'minggu ini' : 'bulan ini'))
+const periodLabel = computed(() =>
+  freq.value === 'daily' ? t('quests.periodDay') : freq.value === 'weekly' ? t('quests.periodWeek') : t('quests.periodMonth'),
+)
 
-const today = new Date().toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })
+const today = computed(() =>
+  new Date().toLocaleDateString(locale.value === 'en' ? 'en-US' : 'id-ID', { weekday: 'short', day: 'numeric', month: 'short' }),
+)
 
 onMounted(async () => {
   try { await load(true) } finally { pending.value = false }
@@ -20,19 +25,19 @@ onMounted(async () => {
 <template>
   <div class="fx col gap16">
     <div class="fx ac jb">
-      <span class="h">Quest</span>
+      <span class="h">{{ t('quests.title') }}</span>
       <span class="chip"><i class="ph ph-calendar-blank" />{{ today }}</span>
     </div>
 
     <div class="seg">
-      <button class="segi" :class="{ segon: freq === 'daily' }" @click="freq = 'daily'">Harian</button>
-      <button class="segi" :class="{ segon: freq === 'weekly' }" @click="freq = 'weekly'">Mingguan</button>
-      <button class="segi" :class="{ segon: freq === 'monthly' }" @click="freq = 'monthly'">Bulanan</button>
+      <button class="segi" :class="{ segon: freq === 'daily' }" @click="freq = 'daily'">{{ t('quests.daily') }}</button>
+      <button class="segi" :class="{ segon: freq === 'weekly' }" @click="freq = 'weekly'">{{ t('quests.weekly') }}</button>
+      <button class="segi" :class="{ segon: freq === 'monthly' }" @click="freq = 'monthly'">{{ t('quests.monthly') }}</button>
     </div>
 
     <div class="card pad spot" style="border-radius:20px">
       <div class="fx ac jb">
-        <span style="font:600 12px 'Plus Jakarta Sans';color:rgba(255,255,255,.7)">Progres {{ periodLabel }}</span>
+        <span style="font:600 12px 'Plus Jakarta Sans';color:rgba(255,255,255,.7)">{{ t('quests.progress', { period: periodLabel }) }}</span>
         <span style="font:700 13px 'Space Grotesk';color:var(--amber)">+{{ totalExpToday }} EXP</span>
       </div>
       <div class="fx ac gap12" style="margin-top:10px">
@@ -43,9 +48,12 @@ onMounted(async () => {
 
     <div v-if="pending" class="spinner" />
     <div v-else class="fx col gap10">
-      <QuestRow v-for="q in filtered" :key="q.id" :quest="q" show-streak show-schedule @toggle="toggle" />
+      <QuestRow
+        v-for="q in filtered" :key="q.id" :quest="q" show-streak show-schedule editable
+        @toggle="toggle" @edit="navigateTo(`/quests/${q.id}`)"
+      />
       <div v-if="!filtered.length" class="mut" style="text-align:center;font-size:12.5px;padding:20px">
-        Belum ada quest {{ freq === 'daily' ? 'harian' : freq === 'weekly' ? 'mingguan' : 'bulanan' }}.
+        {{ t('quests.empty', { period: periodLabel }) }}
       </div>
     </div>
 
